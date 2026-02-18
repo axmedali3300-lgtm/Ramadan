@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ramadan Pro V3</title>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {font-family: Arial; background:#f4f7f6; padding:20px;}
+.card {background:white;padding:15px;margin-top:20px;border-radius:12px;}
+button {padding:8px 15px;margin-top:10px;}
+</style>
+</head>
+
+<body>
+
+<h1 id="title">Ramadan Pro</h1>
+
+<!-- LOGIN -->
+<div class="card">
+<h2>Account</h2>
+<button onclick="login()">Login with Google</button>
+<button onclick="logout()">Logout</button>
+<p id="userName"></p>
+</div>
+
+<!-- QURAN TRACKER -->
+<div class="card">
+<h2>Quran Reading Tracker</h2>
+<input type="number" id="pagesRead" placeholder="Pages Read Today">
+<button onclick="saveQuran()">Save</button>
+<p>Total Pages: <span id="totalPages">0</span> / 604</p>
+</div>
+
+<!-- TASBIH COUNTER -->
+<div class="card">
+<h2>Tasbih Counter</h2>
+<h1 id="tasbihCount">0</h1>
+<button onclick="tasbihAdd()">+1</button>
+<button onclick="tasbihReset()">Reset</button>
+</div>
+
+<!-- RAMADAN CALENDAR -->
+<div class="card">
+<h2>Ramadan Calendar</h2>
+<div id="calendar"></div>
+</div>
+
+<!-- CHART -->
+<div class="card">
+<h2>Progress Statistics</h2>
+<canvas id="chart"></canvas>
+</div>
+
+<!-- LANGUAGE -->
+<div class="card">
+<h2>Language</h2>
+<select onchange="changeLang(this.value)">
+<option value="en">English</option>
+<option value="so">Somali</option>
+<option value="ar">Arabic</option>
+</select>
+</div>
+
+<audio id="adhan" src="adhan.mp3"></audio>
+
+<script>
+
+/* ---------------- FIREBASE CONFIG ---------------- */
+const firebaseConfig = {
+  apiKey: "PASTE YOUR KEY",
+  authDomain: "PASTE",
+  projectId: "PASTE"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+
+/* ---------------- LOGIN ---------------- */
+function login(){
+ const provider = new firebase.auth.GoogleAuthProvider();
+ auth.signInWithPopup(provider);
+}
+
+function logout(){
+ auth.signOut();
+}
+
+auth.onAuthStateChanged(user=>{
+ if(user){
+   document.getElementById("userName").innerText=user.displayName;
+   loadData(user.uid);
+ }
+});
+
+
+/* ---------------- QURAN TRACKER ---------------- */
+let currentUser;
+
+function saveQuran(){
+ let pages=parseInt(document.getElementById("pagesRead").value);
+
+ db.collection("users").doc(currentUser).set({
+   quran: firebase.firestore.FieldValue.increment(pages)
+ },{merge:true});
+}
+
+function loadData(uid){
+ currentUser=uid;
+
+ db.collection("users").doc(uid).onSnapshot(doc=>{
+   let data=doc.data()||{};
+   let pages=data.quran||0;
+   document.getElementById("totalPages").innerText=pages;
+   updateChart(pages);
+ });
+}
+
+
+/* ---------------- TASBIH ---------------- */
+let tasbih=0;
+
+function tasbihAdd(){
+ tasbih++;
+ document.getElementById("tasbihCount").innerText=tasbih;
+}
+
+function tasbihReset(){
+ tasbih=0;
+ document.getElementById("tasbihCount").innerText=tasbih;
+}
+
+
+/* ---------------- CALENDAR ---------------- */
+for(let i=1;i<=30;i++){
+ document.getElementById("calendar").innerHTML+=
+ `<button onclick="markDay(${i})">Day ${i}</button>`;
+}
+
+function markDay(day){
+ alert("Completed Day "+day);
+}
+
+
+/* ---------------- CHART ---------------- */
+function updateChart(pages){
+
+ new Chart(document.getElementById("chart"),{
+  type:"doughnut",
+  data:{
+    labels:["Read","Remaining"],
+    datasets:[{
+      data:[pages,604-pages]
+    }]
+  }
+ });
+}
+
+
+/* ---------------- MULTI LANGUAGE ---------------- */
+const lang={
+ en:{title:"Ramadan Pro"},
+ so:{title:"Ramadaan Tracker"},
+ ar:{title:"متتبع رمضان"}
+};
+
+function changeLang(l){
+ document.getElementById("title").innerText=lang[l].title;
+}
+
+
+/* ---------------- ADHAN ---------------- */
+function playAdhan(){
+ document.getElementById("adhan").play();
+}
+
+
+/* TEST ADHAN AFTER 5 SECONDS */
+setTimeout(playAdhan,5000);
+
+</script>
+
+</body>
+</html>
